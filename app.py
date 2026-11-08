@@ -2,11 +2,11 @@ import math as m
 import random
 import time
 import bisect
-import tkinter as tk
-import tkinter.font as tkf
+import streamlit as st
+import html
 
 SIZE = 8
-FPS = 30
+FPS = 15
 D2R = m.pi / 180
 
 T_ENV_IN = 1.6
@@ -22,23 +22,16 @@ T_FIRE_END = T_BURN + T_SPREAD + 2.2
 
 rng = random.Random(21)
 
-root = tk.Tk()
-root.title("For You")
-root.resizable(False, False)
-root.bind("<Escape>", lambda e: root.destroy())
+st.set_page_config(page_title="For You", page_icon="❤️", layout="wide")
+st.markdown("<style>.block-container{padding:1rem 0.5rem;max-width:100%}</style>", unsafe_allow_html=True)
 
-fams = set(tkf.families())
-MONO = next((f for f in ("Cascadia Mono", "Consolas", "Courier New", "DejaVu Sans Mono", "Courier")
-             if f in fams), "Courier")
-scr_h = root.winfo_screenheight()
-fnt = tkf.Font(root=root, family=MONO, size=SIZE, weight="bold")
-CH = fnt.metrics("linespace")
-CW = fnt.measure("M")
-ROWS = int(max(30, min(46, (scr_h - 140) // CH)))
-COLS = int(ROWS * CH / CW)
+# Fixed character grid replaces desktop font/screen measurements from Tkinter.
+ROWS = 40
+COLS = 72
+CH = 16
+CW = 9
 W, H = COLS * CW, ROWS * CH
 S = H / 640.0
-root.geometry(f"{W}x{H}+{(root.winfo_screenwidth() - W) // 2}+{max(0, (scr_h - H) // 2 - 20)}")
 
 BG = (0.010, 0.007, 0.012)
 
@@ -73,8 +66,6 @@ def hexc(c):
     return s
 
 
-cv = tk.Canvas(root, width=W, height=H, bg=hexc(BG), highlightthickness=0)
-cv.pack()
 
 _P = list(range(256))
 rng.shuffle(_P)
@@ -1074,53 +1065,44 @@ def render(t, dt):
     draw_click(t, dt, new)
     draw_cursor(t, new)
 
-    out = {k: (v[0], hexc(v[1])) for k, v in new.items()}
-    for key, val in out.items():
-        if prev.get(key) != val:
-            it = items.get(key)
-            if it is None:
-                items[key] = cv.create_text((key[1] + 0.5) * CW, (key[0] + 0.5) * CH,
-                                            text=val[0], fill=val[1], font=fnt, anchor="center")
-            else:
-                cv.itemconfig(it, text=val[0], fill=val[1])
-    for key in prev.keys() - out.keys():
-        cv.itemconfig(items[key], text=" ")
-    prev = out
+    # Convert the character/color buffer into HTML for Streamlit.
+    grid = [[(" ", "#100b14") for _ in range(COLS)] for _ in range(ROWS)]
+    for (r, c), (ch, color) in new.items():
+        if 0 <= r < ROWS and 0 <= c < COLS:
+            grid[r][c] = (ch, hexc(color))
+    lines = []
+    for row in grid:
+        lines.append("".join(
+            f'<span style="color:{color}">{html.escape(ch)}</span>'
+            for ch, color in row
+        ))
+    display.markdown(
+        '<div style="background:#030206; overflow:hidden; width:100%;">'
+        '<pre style="margin:0 auto; padding:8px; width:max-content; '
+        'max-width:100%; overflow:hidden; white-space:pre; '
+        'font: bold 10px/1.18 monospace; letter-spacing:0;">'
+        + "\n".join(lines) + '</pre></div>',
+        unsafe_allow_html=True,
+    )
+    prev = new
 
 
+
+display = st.empty()
 state = {"t0": time.perf_counter(), "last": 0.0}
 
+st.markdown("<h2 style='text-align:center'>A little something for you ❤️</h2>", unsafe_allow_html=True)
+st.caption("Your surprise is starting…")
 
-def restart(_=None):
-    state["t0"] = time.perf_counter()
-    state["last"] = 0.0
-    st["burst"] = False
-    st["click"] = False
-    st["hot"] = False
-    sparks.clear()
-    smoke.clear()
-    bits.clear()
-    BGC.clear()
-    for row in HEAT:
-        for i in range(COLS):
-            row[i] = 0.0
-    for p in MOTES:
-        p[1] = rng.uniform(0, H)
-
-
-root.bind("r", restart)
-root.bind("R", restart)
-
-
-def tick():
+# Streamlit reruns this script; play the animation in this session.
+while True:
     t0 = time.perf_counter()
     t = t0 - state["t0"]
     dt = clamp(t - state["last"], 0.0, 0.1)
     state["last"] = t
     render(t, dt)
-    el = (time.perf_counter() - t0) * 1000
-    root.after(max(1, int(1000 / FPS - el)), tick)
+    if t >= 16.0:
+        break
+    time.sleep(max(0.001, 1.0 / FPS - (time.perf_counter() - t0)))
 
-
-root.after(100, tick)
-root.mainloop()
+st.markdown("<p style='text-align:center'>Made with love ❤️</p>", unsafe_allow_html=True)
