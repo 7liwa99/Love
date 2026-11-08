@@ -2,8 +2,11 @@ import math as m
 import random
 import time
 import bisect
-import tkinter as tk
-import tkinter.font as tkf
+import streamlit as st
+import streamlit.components.v1 as components
+
+# --- STREAMLIT EMBED ENGINE ---
+st.set_page_config(page_title="For You", layout="centered")
 
 SIZE = 8
 FPS = 30
@@ -1123,4 +1126,22 @@ def tick():
 
 
 root.after(100, tick)
-root.mainloop()
+# --- RENDER FRAME TICK PIPELINE ---
+placeholder = st.empty()
+state = {"t0": time.perf_counter(), "last": 0.0}
+
+def run_loop():
+    while True:
+        t0 = time.perf_counter()
+        t = t0 - state["t0"]
+        dt = clamp(t - state["last"], 0.0, 0.1)
+        state["last"] = t
+        
+        # Call your original layout renderer
+        render(t, dt) 
+        
+        # Force the frame array to push to the web canvas
+        time.sleep(1 / FPS)
+
+if __name__ == "__main__":
+    run_loop()
