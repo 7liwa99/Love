@@ -687,7 +687,7 @@ prev = {}
 sparks = []
 smoke = []
 bits = []
-st = {"burst": False, "click": False, "hot": False}
+anim_state = {"burst": False, "click": False, "hot": False}
 HEAT = [[0.0] * COLS for _ in range(ROWS + 2)]
 FSET = {1: ".'", 2: ":.", 3: "^'", 4: "^*", 5: "*(", 6: "(+)", 7: "%&", 8: "#%", 9: "#@", 10: "@"}
 frame = [0]
@@ -701,7 +701,7 @@ def bed_k(t):
 
 def fire_step(src, t):
     out = {}
-    if not src and not st["hot"]:
+    if not src and not anim_state["hot"]:
         return out
     last = COLS - 1
     rnd = rng.random
@@ -734,7 +734,7 @@ def fire_step(src, t):
                 out[(r, c)] = (s_[(c * 3 + r * 7 + fr) % len(s_)], LUT[int(clamp(v) * 63)])
             elif v > 0.01:
                 anyhot = True
-    st["hot"] = anyhot
+    anim_state["hot"] = anyhot
     return out
 
 
@@ -801,8 +801,8 @@ def _ring_cells(cx, cy, pad):
 
 def draw_click(t, dt, new):
     a = t - T_CLICK
-    if not st["click"] and a >= 0:
-        st["click"] = True
+    if not anim_state["click"] and a >= 0:
+        anim_state["click"] = True
         for _ in range(52):
             ang = rng.uniform(0, 2 * m.pi)
             sp = rng.uniform(120, 560) * S
@@ -1001,8 +1001,8 @@ def render(t, dt):
                 T = clamp((0.45 + 0.55 * s) * dim)
                 new[(rr, cc)] = (chh, LUT[int(T * 63)])
 
-    if t >= T_BURN and not st["burst"]:
-        st["burst"] = True
+    if t >= T_BURN and not anim_state["burst"]:
+        anim_state["burst"] = True
         for _ in range(150):
             a_ = rng.uniform(-170, -10) * D2R
             sp_ = rng.uniform(100, 560) * S
